@@ -1,13 +1,30 @@
 version: '3.5'
 
 services:
-  # Creates self signed tls certificates. Remove if you
-  # use your own.
-  ssl:
-    image: jeboehm/mailserver-ssl:latest
-    build: ./ssl
-    env_file: .env
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    restart: always
+    environment:
+      - 'PMA_HOST=db'
+      - 'UPLOAD_LIMIT=${PHPMYADMIN_UPLOAD_LIMIT:-300000000}'
+    links:
+      - db
+    ports:
+      - '${PHPMYADMIN_PUBLIC_PORT:-30002}:80'
+  portainer:
+    image: portainer/portainer-ce
+    ports:
+      - '${PORTAINER_PUBLIC_PORT:-30005}:9000'
     volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+      # Creates self signed tls certificates. Remove if you
+      # use your own.
+      # ssl:
+      #   image: jeboehm/mailserver-ssl:latest
+      #   build: ./ssl
+      #   env_file: .env
+      #   volumes:
       - data-tls:/media/tls:rw
 
   # Responsible for storing users and their aliases. Remove
@@ -23,45 +40,39 @@ services:
   # The Mail Transfer Agent (Postfix) receives incoming mail
   # on TCP port 25.
   mta:
-    image: jeboehm/mailserver-mta:latest
+    # image: jeboehm/mailserver-mta:latest
     build: ./mta
     restart: on-failure:5
     env_file: .env
     volumes:
-      - data-tls:/media/tls:ro
-      # For using external certificates uncomment the following lines
-      # and change the path on the left side of the colon.
-      # - /home/user/certs/mail.example.com.crt:/media/tls/mailserver.crt:ro
-      # - /home/user/certs/mail.example.com.key:/media/tls/mailserver.key:ro
+      - /etc/letsencrypt/live/mail.webpress.vn/fullchain.pem:/media/tls/fullchain.pem:ro
+      - /etc/letsencrypt/live/mail.webpress.vn/privkey.pem:/media/tls/privkey.pem:ro
 
   # The Mail Delivery Agent (Dovecot) is responsible for storing
   # incoming mail into a users mailbox and also delivers them
   # via POP3 or IMAP4.
   mda:
-    image: jeboehm/mailserver-mda:latest
+    # image: jeboehm/mailserver-mda:latest
     build: ./mda
     restart: on-failure:5
     env_file: .env
     volumes:
       - data-mail:/var/vmail
-      - data-tls:/media/tls:ro
-      # For using external certificates uncomment the following lines
-      # and change the path on the left side of the colon.
-      # - /home/user/certs/mail.example.com.crt:/media/tls/mailserver.crt:ro
-      # - /home/user/certs/mail.example.com.key:/media/tls/mailserver.key:ro
+      - /etc/letsencrypt/live/mail.webpress.vn/fullchain.pem:/media/tls/fullchain.pem:ro
+      - /etc/letsencrypt/live/mail.webpress.vn/privkey.pem:/media/tls/privkey.pem:ro
 
   # The admin (mailserver-admin) and webmail (roundcube) interfaces
   # live here. Can be removed if not needed.
   web:
-    image: jeboehm/mailserver-web:latest
+    # image: jeboehm/mailserver-web:latest
     build: ./web
     restart: on-failure:5
     env_file: .env
     volumes:
       - data-dkim:/media/dkim
     # For use with jwilder/nginx-proxy.
-    # environment:
-    #   - VIRTUAL_HOST=mail.example.com
+    environment:
+      - VIRTUAL_HOST=mail.webpress.vn
 
   # Incoming spam is (hopefully) filtered by rspamd which runs
   # in this service.
@@ -89,7 +100,7 @@ services:
   redis:
     image: redis:alpine
     restart: on-failure:5
-    command: ["redis-server", "--appendonly", "yes"]
+    command: ['redis-server', '--appendonly', 'yes']
     volumes:
       - data-redis:/data
 
@@ -121,3 +132,4 @@ volumes:
   data-filter:
   data-virusdb:
   data-redis:
+  portainer_data:

@@ -19,8 +19,8 @@ ENV MAILNAME=mail.example.com \
     MDA_HOST=mda \
     MTA_HOST=mta \
     RELAYHOST=false \
-    SSL_CERT=/media/tls/mailserver.crt \
-    SSL_KEY=/media/tls/mailserver.key \
+    SSL_CERT=/media/tls/fullchain.pem \
+    SSL_KEY=/media/tls/privkey.pem \
     WAITSTART_TIMEOUT=1m \
     RECIPIENT_DELIMITER=-
 
